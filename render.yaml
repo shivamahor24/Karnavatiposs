@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: anndevta-pos-backend
+    env: python
+    buildCommand: "cd backend && pip install -r requirements.txt"
+    startCommand: "cd backend && uvicorn server:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: JWT_SECRET
+        value: "anndevta-pos-dev-secret-key-2025"
+      - key: DB_NAME
+        value: "anndevta_pos"
+      - key: MONGO_URL
+        value: "mongodb+srv://officialanant17:Anantsachin@cluster0.xrpbcut.mongodb.net/?appName=Cluster0"

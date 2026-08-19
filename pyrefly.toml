@@ -1,0 +1,3 @@
+site-package-path = ["backend/.venv/Lib/site-packages"]
+python-interpreter-path = "backend/.venv/Scripts/python.exe"
+project-excludes = ["c:\\__pyrefly_virtual__\\**", "c:/__pyrefly_virtual__/**", "**/__pyrefly_virtual__/**"]

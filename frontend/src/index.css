@@ -1,0 +1,810 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+    margin: 0;
+    font-family: 'IBM Plex Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    background: #FFFBF7;
+    color: #172554;
+}
+
+h1,
+h2,
+h3,
+h4,
+.font-display {
+    font-family: 'Manrope', system-ui, sans-serif;
+    letter-spacing: -0.01em;
+}
+
+code,
+.font-mono {
+    font-family: 'JetBrains Mono', monospace;
+}
+
+@layer base {
+    :root {
+        --background: 32 100% 98%;
+        --foreground: 220 22% 16%;
+        --card: 0 0% 100%;
+        --card-foreground: 220 22% 16%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 220 22% 16%;        ;
+        --primary: 20 94% 50%;
+        --primary-foreground: 0 0% 100%;
+        --secondary: 35 70% 96%;
+        --secondary-foreground: 220 22% 16%;
+        --muted: 35 50% 97%;
+        --muted-foreground: 220 8% 45%;
+        --accent: 28 100% 96%;
+        --accent-foreground: 20 94% 38%;
+        --destructive: 0 72% 50%;
+        --destructive-foreground: 0 0% 100%;
+        --border: 32 35% 90%;
+        --input: 32 35% 90%;
+        --ring: 20 94% 50%;
+        --radius: 1rem;
+        --chart-1: 20 94% 50%;
+        --chart-2: 155 45% 35%;
+        --chart-3: 215 45% 45%;
+        --chart-4: 42 90% 58%;
+        --chart-5: 345 75% 55%;
+    }
+}
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+
+    body {
+        @apply bg-background text-foreground;
+    }
+}
+
+/* Custom utilities */
+.pulse-dot {
+    box-shadow: 0 0 0 0 rgba(45, 106, 79, 0.6);
+    animation: pulse-ring 2s infinite;
+}
+
+.pulse-dot-offline {
+    box-shadow: 0 0 0 0 rgba(217, 4, 41, 0.6);
+    animation: pulse-ring-red 2s infinite;
+}
+
+@keyframes pulse-ring {
+    0% {
+        box-shadow: 0 0 0 0 rgba(45, 106, 79, 0.6);
+    }
+
+    70% {
+        box-shadow: 0 0 0 8px rgba(45, 106, 79, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(45, 106, 79, 0);
+    }
+}
+
+@keyframes pulse-ring-red {
+    0% {
+        box-shadow: 0 0 0 0 rgba(217, 4, 41, 0.6);
+    }
+
+    70% {
+        box-shadow: 0 0 0 8px rgba(217, 4, 41, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(217, 4, 41, 0);
+    }
+}
+
+.tap-scale:active {
+    transform: scale(0.97);
+}
+
+/* Slim scrollbars (global) */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #E6E4DE;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #C9C6BE;
+}
+
+/* ── Cart items list — modern thin POS-style scrollbar ── */
+.cart-items-list {
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex: 1;
+    /* Firefox */
+    scrollbar-width: thin;
+    scrollbar-color: #bdbdbd transparent;
+    /* Smooth desktop scroll */
+    scroll-behavior: smooth;
+    /* Native momentum scroll on iOS / Android */
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+}
+
+.cart-items-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.cart-items-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.cart-items-list::-webkit-scrollbar-thumb {
+    background: #bdbdbd;
+    border-radius: 10px;
+    transition: background 0.2s ease;
+}
+
+.cart-items-list::-webkit-scrollbar-thumb:hover,
+.cart-items-list::-webkit-scrollbar-thumb:active {
+    background: #9e9e9e;
+}
+
+/* Hide scrollbar for Chrome, Safari, Opera */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+/* Hide scrollbar for IE, Edge and Firefox */
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+/* Grid pattern bg */
+.grid-bg {
+    background-image:
+        linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+    background-size: 24px 24px;
+}
+
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+
+  #second-token-print,
+  #second-token-print * {
+    visibility: visible !important;
+  }
+
+  #second-token-print {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    max-width: 300px !important;
+    margin: 0 !important;
+    padding: 10px !important;
+    font-size: 12px !important;
+    background: #fff !important;
+    color: #000 !important;
+    box-shadow: none !important;
+    border: none !important;
+    page-break-inside: avoid !important;
+  }
+
+  html, body {
+    height: auto !important;
+    overflow: hidden !important;
+  }
+
+  .print-btn {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  @page {
+    margin: 0;
+    size: auto;
+  }
+
+  * {
+    page-break-after: avoid !important;
+    page-break-before: avoid !important;
+    page-break-inside: avoid !important;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* ==========================================================================
+   Receipt & Billing Page Responsive Proportional Scaling (1024px & 768px)
+   ========================================================================== */
+
+.receipt-container {
+  width: 300px;
+  max-width: 300px;
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
+  transition: transform 0.2s ease-in-out;
+}
+
+.receipt-wrapper {
+  overflow-x: auto;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+@media (max-width: 1024px) {
+  .receipt-container {
+    zoom: 1;
+    transform-origin: top center;
+  }
+
+  .billing-responsive-scale {
+    zoom: 1;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+}
+
+@media (max-width: 767px) {
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    overflow-x: hidden;
+    background-color: #FAF7F2;
+  }
+
+  .main-wrapper {
+    display: flex;
+    width: 100%;
+    max-width: 100%;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden;
+  }
+
+  main {
+    margin-left: 0 !important;
+    padding: 0.35rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .top-navbar {
+    display: none !important;
+  }
+
+  .sidebar {
+    display: flex !important;
+    flex-direction: column !important;
+    position: relative !important;
+    top: 0 !important;
+    left: 0 !important;
+    inset: auto !important;
+    transition: transform 0.3s ease, margin-right 0.3s ease !important;
+    flex: 0 0 21% !important;
+    min-width: 172px !important;
+    max-width: 190px !important;
+    height: calc(100vh - 0.7rem) !important;
+    min-height: calc(100vh - 0.7rem) !important;
+    max-height: calc(100vh - 0.7rem) !important;
+    padding: 2px !important;
+    box-sizing: border-box !important;
+    overflow-y: hidden !important;
+    overflow-x: hidden !important;
+    z-index: 20 !important;
+  }
+
+  .sidebar > div > div:first-child {
+    padding: 4px 6px !important;
+  }
+
+  .sidebar nav {
+    padding-top: 1px !important;
+    padding-bottom: 1px !important;
+  }
+
+  .sidebar nav > div {
+    gap: 1px !important;
+  }
+
+  .sidebar nav a {
+    padding: 3px 5px !important;
+    font-size: 10.5px !important;
+    gap: 4.5px !important;
+    border-radius: 5px !important;
+  }
+
+  .sidebar nav a svg {
+    width: 13px !important;
+    height: 13px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .sidebar img {
+    max-width: 88px !important;
+  }
+
+  .sign-out-btn {
+    padding: 2.5px 4px !important;
+    font-size: 9px !important;
+    gap: 3px !important;
+    border-radius: 4px !important;
+  }
+
+  .sign-out-btn svg {
+    width: 11px !important;
+    height: 11px !important;
+  }
+
+  .user-profile-card {
+    padding: 2.5px 4px !important;
+    gap: 3.5px !important;
+    border-radius: 5px !important;
+  }
+
+  .user-profile-card-avatar {
+    width: 20px !important;
+    height: 20px !important;
+    font-size: 9px !important;
+  }
+
+  .user-profile-card-name {
+    font-size: 9.5px !important;
+  }
+
+  .user-profile-card-role {
+    font-size: 7.5px !important;
+  }
+
+  .career-craftly-footer {
+    width: auto !important;
+    margin: 4px 10px 8px 10px !important;
+    padding: 8px 6px !important;
+    border-radius: 12px !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
+  .career-craftly-footer > div {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    gap: 3px !important;
+  }
+
+  .career-craftly-footer img {
+    height: 16px !important;
+    max-height: 16px !important;
+    object-fit: contain !important;
+  }
+
+  .career-craftly-footer .career-craftly-text {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+    margin-top: 2px !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+  }
+
+  .career-craftly-footer .career-craftly-title {
+    font-size: 11.5px !important;
+    font-weight: 700 !important;
+    line-height: 1.25 !important;
+    text-align: center !important;
+    white-space: normal !important;
+  }
+
+  .career-craftly-footer .career-craftly-subtitle {
+    font-size: 10px !important;
+    font-weight: 500 !important;
+    line-height: 1.25 !important;
+    text-align: center !important;
+    margin-top: 1px !important;
+    white-space: normal !important;
+  }
+
+  .menu-section {
+    flex: 1 !important;
+    min-width: 0 !important;
+    height: 100% !important;
+    min-height: calc(100vh - 0.8rem) !important;
+    border-radius: 20px !important;
+    background: #FFFDF9 !important;
+    border: 1px solid #F2E4D4 !important;
+    box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.04) !important;
+    padding: 16px !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .cart-section {
+    flex: 0 0 32% !important;
+    min-width: 0 !important;
+    height: 100% !important;
+    min-height: calc(100vh - 0.8rem) !important;
+    border-radius: 20px !important;
+    background: #FFFDF9 !important;
+    border: 1px solid #F0DFCE !important;
+    box-shadow: 0 8px 20px -4px rgba(255, 107, 0, 0.06) !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .container,
+  .page,
+  .layout {
+    margin-left: 0 !important;
+    padding-left: 0 !important;
+  }
+
+  .menu-section,
+  .cart-section {
+    overflow: hidden;
+  }
+
+  .menu-scroll,
+  .cart-scroll,
+  .cart-items {
+    overflow-y: auto;
+    max-height: 100%;
+  }
+
+  .receipt-container {
+    zoom: 1;
+    transform-origin: top center;
+    border-radius: 12px;
+  }
+
+  .billing-responsive-scale {
+    zoom: 1;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+}
+
+@media (max-width: 767px) {
+
+  .sidebar {
+    flex: 0 0 20% !important;
+    min-width: 152px !important;
+    max-width: 168px !important;
+    height: calc(100vh - 0.5rem) !important;
+    max-height: calc(100vh - 0.5rem) !important;
+    padding: 1.5px !important;
+  }
+
+  .sidebar > div > div:first-child {
+    padding: 3px 5px !important;
+  }
+
+  .sidebar nav {
+    padding-top: 1px !important;
+    padding-bottom: 1px !important;
+  }
+
+  .sidebar nav > div {
+    gap: 1px !important;
+  }
+
+  .sidebar nav a {
+    padding: 2.5px 4px !important;
+    font-size: 10px !important;
+    gap: 3.5px !important;
+  }
+
+  .sidebar nav a svg {
+    width: 12px !important;
+    height: 12px !important;
+  }
+
+  .sidebar img {
+    max-width: 80px !important;
+  }
+
+  .user-profile-card {
+    padding: 2px 3.5px !important;
+    gap: 3px !important;
+    border-radius: 5px !important;
+  }
+
+  .user-profile-card-avatar {
+    width: 18px !important;
+    height: 18px !important;
+    font-size: 8.5px !important;
+  }
+
+  .user-profile-card-name {
+    font-size: 9px !important;
+  }
+
+  .user-profile-card-role {
+    font-size: 7.5px !important;
+  }
+
+  .sign-out-btn {
+    padding: 2px 3.5px !important;
+    font-size: 8.5px !important;
+    gap: 3px !important;
+    border-radius: 4px !important;
+  }
+
+  .sign-out-btn svg {
+    width: 10.5px !important;
+    height: 10.5px !important;
+  }
+
+  .career-craftly-footer {
+    width: auto !important;
+    margin: 4px 8px 6px 8px !important;
+    padding: 6px 4px !important;
+    border-radius: 10px !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+  }
+
+  .career-craftly-footer > div {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    gap: 2px !important;
+  }
+
+  .career-craftly-footer img {
+    height: 14px !important;
+    max-height: 14px !important;
+    object-fit: contain !important;
+  }
+
+  .career-craftly-footer .career-craftly-text {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+    margin-top: 2px !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+  }
+
+  .career-craftly-footer .career-craftly-title {
+    font-size: 10.5px !important;
+    font-weight: 700 !important;
+    line-height: 1.2 !important;
+    text-align: center !important;
+    white-space: normal !important;
+  }
+
+  .career-craftly-footer .career-craftly-subtitle {
+    font-size: 9px !important;
+    font-weight: 500 !important;
+    line-height: 1.2 !important;
+    text-align: center !important;
+    margin-top: 1px !important;
+    white-space: normal !important;
+  }
+
+  .menu-section {
+    height: 100% !important;
+    min-height: calc(100vh - 0.6rem) !important;
+    padding: 12px !important;
+  }
+
+  .cart-section {
+    height: 100% !important;
+    min-height: calc(100vh - 0.6rem) !important;
+    flex: 0 0 33% !important;
+    min-width: 0 !important;
+  }
+
+  .receipt-container {
+    zoom: 1;
+    transform-origin: top center;
+  }
+
+  .billing-responsive-scale {
+    zoom: 1;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+}
+
+/* ==========================================================================
+   Sidebar Toggle Button & Responsive Show/Hide (768px+)
+   ========================================================================== */
+
+@media (min-width: 768px) {
+
+  .toggle-btn {
+    position: absolute;
+    top: 18px;
+    right: 16px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #FFFFFF 0%, #FFFDF9 100%) !important;
+    border: 1.5px solid #F4E6D7 !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
+    color: #475569;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    z-index: 50;
+  }
+
+  .toggle-btn:hover {
+    background: linear-gradient(135deg, #FFF3E7 0%, #FFE9D6 100%) !important;
+    color: #FF6B00 !important;
+    border-color: #FFB380 !important;
+    box-shadow: 0 4px 14px rgba(255, 107, 0, 0.22), 0 0 0 3px rgba(255, 107, 0, 0.08) !important;
+    transform: scale(1.08);
+  }
+
+  .toggle-btn:active {
+    transform: scale(0.95);
+  }
+
+  .sidebar {
+    transition: flex 0.3s ease, min-width 0.3s ease, max-width 0.3s ease, width 0.3s ease, padding 0.3s ease !important;
+    z-index: 30 !important;
+  }
+
+  aside.sidebar ~ main {
+    margin-left: 210px !important;
+    padding-left: 4px !important;
+    transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding-left 0.3s ease !important;
+  }
+
+  @media (min-width: 1024px) {
+    aside.sidebar ~ main {
+      margin-left: 210px !important;
+    }
+  }
+
+  /* Collapsed Mode (Slim Icon-only Navbar ~70px) */
+  .sidebar.collapsed {
+    flex: 0 0 70px !important;
+    min-width: 70px !important;
+    max-width: 70px !important;
+    width: 70px !important;
+    padding: 2px !important;
+  }
+
+  aside.sidebar.collapsed ~ main {
+    margin-left: 70px !important;
+    padding-left: 4px !important;
+    transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding-left 0.3s ease !important;
+  }
+
+  .sidebar.collapsed > div {
+    border-radius: 16px !important;
+    padding-left: 2px !important;
+    padding-right: 2px !important;
+    transition: border-radius 0.3s ease !important;
+  }
+
+  .sidebar.collapsed .toggle-btn {
+    top: 16px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+  }
+
+  .sidebar.collapsed .toggle-btn:hover {
+    transform: translateX(-50%) scale(1.08);
+  }
+
+  /* Hide text labels completely */
+  .sidebar.collapsed nav a span,
+  .sidebar.collapsed .user-profile-card-name,
+  .sidebar.collapsed .user-profile-card-role,
+  .sidebar.collapsed .sign-out-btn span,
+  .sidebar.collapsed .career-craftly-text {
+    display: none !important;
+  }
+
+  /* Center nav items and icons */
+  .sidebar.collapsed nav {
+    padding-left: 2px !important;
+    padding-right: 2px !important;
+  }
+
+  .sidebar.collapsed nav a {
+    justify-content: center !important;
+    padding: 10px 0 !important;
+    gap: 0 !important;
+    width: 100% !important;
+  }
+
+  .sidebar.collapsed nav a > div {
+    justify-content: center !important;
+    gap: 0 !important;
+    width: 100% !important;
+  }
+
+  .sidebar.collapsed nav a svg {
+    margin: 0 auto !important;
+    width: 20px !important;
+    height: 20px !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Center logo */
+  .sidebar.collapsed img {
+    max-width: 32px !important;
+    margin: 28px auto 0 auto !important;
+  }
+
+  .sidebar.collapsed .user-profile-card {
+    justify-content: center !important;
+    padding: 4px !important;
+    gap: 0 !important;
+  }
+
+  .sidebar.collapsed .sign-out-btn {
+    justify-content: center !important;
+    padding: 6px 0 !important;
+    gap: 0 !important;
+  }
+
+  .sidebar.collapsed .sign-out-btn svg {
+    margin: 0 auto !important;
+    width: 16px !important;
+    height: 16px !important;
+  }
+
+  .sidebar.collapsed .career-craftly-footer {
+    padding: 6px !important;
+    margin: 4px !important;
+  }
+
+  .sidebar.collapsed .career-craftly-footer img {
+    height: 16px !important;
+    margin: 0 auto !important;
+  }
+
+}
+
+@media (max-width: 767px) {
+  .toggle-btn {
+    display: none !important;
+  }
+
+  .sidebar {
+    transform: translateX(0) !important;
+  }
+}

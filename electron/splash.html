@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Anndevta POS</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      -webkit-app-region: drag;
+    }
+
+    .card {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      border: 1px solid rgba(251, 146, 60, 0.3);
+      border-radius: 20px;
+      padding: 48px 56px;
+      text-align: center;
+      width: 420px;
+      box-shadow:
+        0 25px 60px rgba(0,0,0,0.6),
+        0 0 0 1px rgba(255,255,255,0.05) inset;
+    }
+
+    .logo {
+      width: 220px;
+      height: auto;
+      margin-bottom: 12px;
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    h1 {
+      color: #f97316;
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 4px;
+    }
+
+    .tagline {
+      color: #94a3b8;
+      font-size: 13px;
+      margin-bottom: 36px;
+    }
+
+    .status {
+      color: #cbd5e1;
+      font-size: 13px;
+      margin-bottom: 20px;
+      min-height: 20px;
+    }
+
+    .progress-track {
+      background: rgba(255,255,255,0.08);
+      border-radius: 999px;
+      height: 6px;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #f97316, #fb923c);
+      border-radius: 999px;
+      width: 0%;
+      animation: fill 8s ease-in-out forwards;
+    }
+
+    @keyframes fill {
+      0%   { width: 0%; }
+      20%  { width: 30%; }
+      50%  { width: 60%; }
+      80%  { width: 85%; }
+      100% { width: 95%; }
+    }
+
+    .dots {
+      display: inline-block;
+      animation: dots 1.5s infinite;
+    }
+
+    @keyframes dots {
+      0%   { content: '.'; }
+      33%  { content: '..'; }
+      66%  { content: '...'; }
+    }
+
+    .footer {
+      margin-top: 28px;
+      color: #475569;
+      font-size: 11px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <img class="logo" src="Anndevta%20logo%20(1).png" alt="AnnDevta Logo" />
+    <h1>Anndevta POS</h1>
+    <p class="tagline">Restaurant Point of Sale System</p>
+
+    <p class="status" id="status">Starting services<span class="dots">...</span></p>
+
+    <div class="progress-track">
+      <div class="progress-bar"></div>
+    </div>
+
+    <p class="footer">v1.0.0 &nbsp;·&nbsp; Offline Mode</p>
+  </div>
+
+  <script>
+    const messages = [
+      'Starting MongoDB database...',
+      'Loading backend server...',
+      'Initialising application...',
+      'Almost ready...',
+    ];
+    let i = 0;
+    const el = document.getElementById('status');
+    setInterval(() => {
+      if (i < messages.length) {
+        el.innerHTML = messages[i] + '<span class="dots">...</span>';
+        i++;
+      }
+    }, 2000);
+  </script>
+</body>
+</html>
