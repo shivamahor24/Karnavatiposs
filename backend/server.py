@@ -238,7 +238,7 @@ class MenuItemIn(BaseModel):
     name: str
     category_id: str
     price: float
-    available: bool = False
+    available: bool = True
     is_thali: bool = False
     thali_groups: List[ThaliGroup] = Field(default_factory=list)
     thali_extras: str = ""
@@ -487,7 +487,7 @@ async def _create_tables(db: aiosqlite.Connection):
             name TEXT NOT NULL,
             category_id TEXT NOT NULL DEFAULT '',
             price REAL NOT NULL DEFAULT 0,
-            available INTEGER NOT NULL DEFAULT 0,
+            available INTEGER NOT NULL DEFAULT 1,
             is_thali INTEGER NOT NULL DEFAULT 0,
             thali_groups TEXT DEFAULT '[]',
             thali_extras TEXT DEFAULT '',
@@ -841,6 +841,8 @@ async def lifespan(app: FastAPI):
         for t_row in tenants:
             t_name = t_row.get("tenant_db", "default")
             await _resequence_tenant_orders(_db_conn, t_name)
+        # One-time initialization of default menu item availability to active (1)
+        await _init_menu_availability(_db_conn)
     except Exception as e:
         logger.warning(f"Lifespan database setup warning: {e}")
 
@@ -1291,12 +1293,32 @@ async def delete_category(cid: str, _: dict = Depends(require_roles("admin"))):
 
 
 # ------- Menu -------
+async def _init_menu_availability(db):
+    """Ensure all unconfigured / legacy zero-state menu items are initialized to active (1) by default."""
+    try:
+        tenants = await _fetchall(db, "SELECT DISTINCT tenant_db FROM menu")
+        for t_row in tenants:
+            t_name = t_row.get("tenant_db", "default")
+            row = await _fetchone(db, "SELECT data FROM settings WHERE id = ? AND tenant_db = ?", ("restaurant", t_name))
+            s = _parse_json(row["data"], {}) if row else {}
+            if not s.get("menu_availability_initialized_v2"):
+                await _execute(db, "UPDATE menu SET available = 1 WHERE tenant_db = ?", (t_name,))
+                s["menu_availability_initialized_v2"] = True
+                if row:
+                    await _execute(db, "UPDATE settings SET data = ? WHERE id = ? AND tenant_db = ?", (_to_json(s), "restaurant", t_name))
+                else:
+                    await _execute(db, "INSERT INTO settings (id, tenant_db, data) VALUES (?, ?, ?)", ("restaurant", t_name, _to_json(s)))
+                logger.info(f"Initialized menu items to active (ON) for tenant '{t_name}'.")
+    except Exception as e:
+        logger.warning(f"Menu availability initialization warning: {e}")
+
+
 def _menu_row_to_dict(row: dict) -> dict:
     """Convert a menu row with JSON fields to a proper dict."""
     if row is None:
         return None
     row["thali_groups"] = _parse_json(row.get("thali_groups"), [])
-    row["available"] = bool(row.get("available"))
+    row["available"] = True if row.get("available") is None else bool(row.get("available"))
     row["is_thali"] = bool(row.get("is_thali"))
     row["gst_enabled"] = bool(row.get("gst_enabled"))
     row["item_gst_rate"] = float(row.get("item_gst_rate") or 0.0)
@@ -1350,12 +1372,14 @@ async def create_menu(body: MenuItemIn, _: dict = Depends(require_roles("admin")
     m_type = body.menuType or body.menu_type or ("both" if body.is_thali else "parcel")
     obj["menuType"] = m_type
     obj["menu_type"] = m_type
+    avail = 1 if (body.available if body.available is not None else True) else 0
+    obj["available"] = bool(avail)
     await _execute(db,
         """INSERT INTO menu (id, tenant_db, name, category_id, price, available, is_thali, thali_groups, thali_extras,
            portion_weight_kg, menuType, menu_type, gst_enabled, item_gst_rate)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (obj["id"], tenant, obj["name"], obj["category_id"], obj["price"],
-         1 if obj["available"] else 0, 1 if obj["is_thali"] else 0,
+         avail, 1 if obj["is_thali"] else 0,
          _to_json([g.model_dump() for g in body.thali_groups]),
          obj["thali_extras"], obj["portion_weight_kg"], obj["menuType"], obj["menu_type"],
          1 if obj.get("gst_enabled") else 0, float(obj.get("item_gst_rate") or 0)))
@@ -1371,11 +1395,12 @@ async def update_menu(mid: str, body: MenuItemIn, _: dict = Depends(require_role
     m_type = body.menuType or body.menu_type or ("both" if body.is_thali else "parcel")
     data["menuType"] = m_type
     data["menu_type"] = m_type
+    avail = 1 if (data.get("available") if data.get("available") is not None else True) else 0
     await _execute(db,
         """UPDATE menu SET name=?, category_id=?, price=?, available=?, is_thali=?, thali_groups=?, thali_extras=?,
            portion_weight_kg=?, menuType=?, menu_type=?, gst_enabled=?, item_gst_rate=? WHERE id=? AND tenant_db=?""",
         (data["name"], data["category_id"], data["price"],
-         1 if data["available"] else 0, 1 if data["is_thali"] else 0,
+         avail, 1 if data["is_thali"] else 0,
          _to_json(data["thali_groups"]), data["thali_extras"],
          data["portion_weight_kg"], data["menuType"], data["menu_type"],
          1 if data.get("gst_enabled") else 0, float(data.get("item_gst_rate") or 0),
@@ -1394,7 +1419,7 @@ async def toggle_menu(mid: str, _: dict = Depends(get_current_user)):
     item = await _fetchone(db, "SELECT available FROM menu WHERE id = ? AND tenant_db = ?", (mid, tenant))
     if not item:
         raise HTTPException(404, "Not found")
-    new_val = not bool(item.get("available", False))
+    new_val = not bool(item.get("available", 1) if item.get("available") is not None else 1)
     await _execute(db, "UPDATE menu SET available = ? WHERE id = ? AND tenant_db = ?",
                    (1 if new_val else 0, mid, tenant))
     return {"ok": True, "available": new_val}
@@ -1412,7 +1437,7 @@ async def delete_menu(mid: str, _: dict = Depends(require_roles("admin"))):
 async def reset_menu_availability(_: dict = Depends(get_current_user)):
     db = await get_db()
     tenant = _tenant()
-    await _execute(db, "UPDATE menu SET available = 0 WHERE tenant_db = ?", (tenant,))
+    await _execute(db, "UPDATE menu SET available = 1 WHERE tenant_db = ?", (tenant,))
     return {"ok": True}
 
 

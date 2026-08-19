@@ -34,18 +34,7 @@ export default function DailyMenu() {
   };
 
   useEffect(() => {
-    const init = async () => {
-      if (!sessionStorage.getItem("menu_session_reset")) {
-        try {
-          await api.post("/menu/reset");
-          sessionStorage.setItem("menu_session_reset", "true");
-        } catch (e) {
-          console.error("Session menu reset failed:", e);
-        }
-      }
-      refresh();
-    };
-    init();
+    refresh();
   }, []);
 
   const safeMenu = safeArray(menu);
@@ -124,23 +113,35 @@ export default function DailyMenu() {
   }, [safeMenu, safeCategories]);
 
   const toggle = async (m) => {
+    const currentVal = m.available !== false;
+    const newVal = !currentVal;
     try {
+      setMenu((prev) => safeArray(prev).map((x) => x.id === m.id ? { ...x, available: newVal } : x));
       await api.patch(`/menu/${m.id}/toggle`);
-      setMenu((prev) => safeArray(prev).map((x) => x.id === m.id ? { ...x, available: !x.available } : x));
-    } catch (e) { toast.error("Toggle failed"); }
+    } catch (e) {
+      toast.error("Toggle failed");
+      refresh();
+    }
   };
 
   const setAllInCategory = async (catItems, value) => {
+    const itemsToUpdate = safeArray(catItems).filter(i => (i.available !== false) !== value);
+    if (!itemsToUpdate.length) return;
     try {
-      await Promise.all(safeArray(catItems).filter(i => i.available !== value).map(i => api.patch(`/menu/${i.id}/toggle`)));
+      const idsToUpdate = new Set(itemsToUpdate.map(i => i.id));
+      setMenu((prev) => safeArray(prev).map((x) => idsToUpdate.has(x.id) ? { ...x, available: value } : x));
+      await Promise.all(itemsToUpdate.map(i => api.patch(`/menu/${i.id}/toggle`)));
       refresh();
-    } catch (e) { toast.error("Bulk toggle failed"); }
+    } catch (e) {
+      toast.error("Bulk toggle failed");
+      refresh();
+    }
   };
 
   const saveTemplate = async () => {
     if (!templateName.trim()) return toast.error(t("save_template_error"));
     try {
-      const active = safeMenu.filter(m => m.available).map(m => m.id);
+      const active = safeMenu.filter(m => m.available !== false).map(m => m.id);
       await api.post("/templates", { name: templateName, item_ids: active });
       toast.success(`${t("template_saved")}: "${templateName}"`);
       setTemplateName("");
@@ -166,7 +167,7 @@ export default function DailyMenu() {
   };
 
   const today = new Date().toLocaleDateString("en-IN", { weekday: "long", day: "2-digit", month: "long" });
-  const activeCount = safeMenu.filter(m => m.available).length;
+  const activeCount = safeMenu.filter(m => m.available !== false).length;
 
   return (
     <div className="h-full bg-[#FFFDF9] rounded-[20px] md:rounded-[28px] lg:rounded-[32px] border border-[#F4E6D7] shadow-lg p-4 sm:p-5 md:p-6 lg:p-8 flex flex-col overflow-hidden">
@@ -238,7 +239,7 @@ export default function DailyMenu() {
                   <span>{t(cat.name)}</span>
                 </div>
                 <div className="flex items-center gap-3 text-xs">
-                  <span className="text-muted-foreground font-semibold">{safeArray(cat.items).filter(i => i.available).length}/{safeArray(cat.items).length} {t("active")}</span>
+                  <span className="text-muted-foreground font-semibold">{safeArray(cat.items).filter(i => i.available !== false).length}/{safeArray(cat.items).length} {t("active")}</span>
                   <button onClick={(e) => { e.stopPropagation(); setAllInCategory(cat.items, true); }} className="text-[#FF8A3D] font-semibold hover:underline" data-testid={`all-on-${cat.id}`}>{t("all_on")}</button>
                   <button onClick={(e) => { e.stopPropagation(); setAllInCategory(cat.items, false); }} className="text-muted-foreground font-semibold hover:underline" data-testid={`all-off-${cat.id}`}>{t("all_off")}</button>
                 </div>
@@ -247,7 +248,7 @@ export default function DailyMenu() {
                 <div className="p-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                   {safeArray(cat.items).map(m => (
                     <label key={m.id}
-                      className={`flex items-center justify-between gap-3 p-3 rounded-xl border transition-all cursor-pointer ${m.available ? "border-[#FFD8B5] bg-[#FFF7EF]" : "border-[#F4E6D7] bg-white"}`}
+                      className={`flex items-center justify-between gap-3 p-3 rounded-xl border transition-all cursor-pointer ${m.available !== false ? "border-[#FFD8B5] bg-[#FFF7EF]" : "border-[#F4E6D7] bg-white"}`}
                       data-testid={`daily-item-${m.id}`}>
                       <div className="min-w-0">
                         <div className="text-s font-semibold flex items-center gap-1.5 truncate">
@@ -255,7 +256,7 @@ export default function DailyMenu() {
                         </div>
                         <div className="text-s text-muted-foreground font-semibold">₹{m.price}</div>
                       </div>
-                      <Switch checked={m.available} onCheckedChange={() => toggle(m)} data-testid={`daily-toggle-${m.id}`} />
+                      <Switch checked={m.available !== false} onCheckedChange={() => toggle(m)} data-testid={`daily-toggle-${m.id}`} />
                     </label>
                   ))}
                 </div>
