@@ -6,6 +6,7 @@
   "author": "Anndevta Restaurant",
   "main": "electron/main.js",
   "homepage": "./",
+  "proxy": "http://127.0.0.1:8000",
   "dependencies": {
     "@capacitor/android": "^8.4.1",
     "@capacitor/core": "^8.4.1",

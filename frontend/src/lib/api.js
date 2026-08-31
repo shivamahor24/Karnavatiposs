@@ -30,7 +30,11 @@ const safeLocalStorage = {
 export const getBackendUrl = () => {
   const customUrl = safeLocalStorage.getItem("pos_backend_url");
   if (customUrl) return customUrl;
-  return process.env.REACT_APP_BACKEND_URL || "";
+  if (process.env.REACT_APP_BACKEND_URL) return process.env.REACT_APP_BACKEND_URL;
+  if (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || window.location.protocol === "file:" || window.electronAPI)) {
+    return "http://127.0.0.1:8000";
+  }
+  return "http://127.0.0.1:8000";
 };
 
 // Object that converts to the dynamic API string when used in template strings
