@@ -1076,26 +1076,52 @@ export default function Billing() {
             </div>
           </div>
 
-          {/* 1. Food Categories — 2-Row Layout with Left/Right Navigation */}
+          {/* 1. Dining / Parcel Selection — Major Categories (ABOVE) */}
+          <div className="flex items-center gap-3 pt-0.5 pb-3 border-b border-[#F5EFE6]">
+            <button
+              onClick={() => setMenuMode("dining")}
+              data-testid="toggle-dining-menu"
+              className={`px-5 py-2.5 rounded-xl text-xs font-extrabold tracking-wider transition-all duration-200 border flex items-center gap-2 select-none active:scale-95 shadow-2xs ${
+                menuMode === "dining"
+                  ? "bg-[#FF6B00] text-white border-[#FF6B00] shadow-md shadow-orange-500/20"
+                  : "bg-white text-slate-700 border-[#EFE5DA] hover:bg-[#FFF5ED] hover:text-[#FF6B00]"
+              }`}
+            >
+              <UtensilsCrossed className="w-4 h-4" />
+              <span>Dining Menu</span>
+            </button>
+
+            <button
+              onClick={() => setMenuMode("parcel")}
+              data-testid="toggle-parcel-menu"
+              className={`px-5 py-2.5 rounded-xl text-xs font-extrabold tracking-wider transition-all duration-200 border flex items-center gap-2 select-none active:scale-95 shadow-2xs ${
+                menuMode === "parcel"
+                  ? "bg-[#FF6B00] text-white border-[#FF6B00] shadow-md shadow-orange-500/20"
+                  : "bg-white text-slate-700 border-[#EFE5DA] hover:bg-[#FFF5ED] hover:text-[#FF6B00]"
+              }`}
+            >
+              <Package className="w-4 h-4" />
+              <span>Parcel Menu</span>
+            </button>
+          </div>
+
+          {/* 2. Food Categories — Multiple Categories (BELOW) */}
           <div
-            className="relative flex items-center gap-2 w-full select-none"
+            className="relative flex items-center gap-2 w-full select-none pt-1"
             data-testid="pos-category-container"
           >
-            {/* Left Slide Button */}
-            <button
-              type="button"
-              onClick={slideCategoriesLeft}
-              disabled={!canScrollCatLeft}
-              aria-label="Previous categories"
-              className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center shrink-0 border transition-all duration-200 shadow-2xs ${
-                canScrollCatLeft
-                  ? "bg-white text-slate-700 border-[#EFE5DA] hover:bg-[#FFF5ED] hover:text-[#FF6B00] hover:border-orange-300 active:scale-90 cursor-pointer"
-                  : "bg-slate-100/70 text-slate-300 border-slate-200/50 opacity-30 cursor-not-allowed pointer-events-none"
-              }`}
-              title="Previous categories"
-            >
-              <ChevronLeft className="w-5 h-5 stroke-[2.5]" />
-            </button>
+            {/* Left Slide Button (Only rendered when scrolled right) */}
+            {canScrollCatLeft && (
+              <button
+                type="button"
+                onClick={slideCategoriesLeft}
+                aria-label="Previous categories"
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center shrink-0 border transition-all duration-200 shadow-2xs bg-white text-slate-700 border-[#EFE5DA] hover:bg-[#FFF5ED] hover:text-[#FF6B00] hover:border-orange-300 active:scale-90 cursor-pointer"
+                title="Previous categories"
+              >
+                <ChevronLeft className="w-5 h-5 stroke-[2.5]" />
+              </button>
+            )}
 
             {/* 2-Row Scrollable Categories Grid */}
             <div
@@ -1150,35 +1176,6 @@ export default function Billing() {
               title="Next categories"
             >
               <ChevronRight className="w-5 h-5 stroke-[2.5]" />
-            </button>
-          </div>
-
-          {/* 2. Dining / Parcel Selection — BELOW Categories */}
-          <div className="flex items-center gap-3 pt-0.5">
-            <button
-              onClick={() => setMenuMode("dining")}
-              data-testid="toggle-dining-menu"
-              className={`px-5 py-2.5 rounded-xl text-xs font-extrabold tracking-wider transition-all duration-200 border flex items-center gap-2 select-none active:scale-95 shadow-2xs ${
-                menuMode === "dining"
-                  ? "bg-[#FF6B00] text-white border-[#FF6B00] shadow-md shadow-orange-500/20"
-                  : "bg-white text-slate-700 border-[#EFE5DA] hover:bg-[#FFF5ED] hover:text-[#FF6B00]"
-              }`}
-            >
-              <UtensilsCrossed className="w-4 h-4" />
-              <span>Dining Menu</span>
-            </button>
-
-            <button
-              onClick={() => setMenuMode("parcel")}
-              data-testid="toggle-parcel-menu"
-              className={`px-5 py-2.5 rounded-xl text-xs font-extrabold tracking-wider transition-all duration-200 border flex items-center gap-2 select-none active:scale-95 shadow-2xs ${
-                menuMode === "parcel"
-                  ? "bg-[#FF6B00] text-white border-[#FF6B00] shadow-md shadow-orange-500/20"
-                  : "bg-white text-slate-700 border-[#EFE5DA] hover:bg-[#FFF5ED] hover:text-[#FF6B00]"
-              }`}
-            >
-              <Package className="w-4 h-4" />
-              <span>Parcel Menu</span>
             </button>
           </div>
         </div>
