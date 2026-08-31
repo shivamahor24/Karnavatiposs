@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import api from "../lib/api";
 import { Card } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Switch } from "../components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "../components/ui/dialog";
-import { Plus, Trash2, Sparkles, Pencil } from "lucide-react";
+import { Plus, Trash2, Sparkles, Pencil, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 import { useLanguage } from "../context/LanguageContext";
 import ConfirmDialog from "../components/ConfirmDialog";
@@ -32,7 +32,33 @@ export default function MenuPage() {
   const [editing, setEditing] = useState(null); // editing item or null
   const [catName, setCatName] = useState("");
   const [confirmDialog, setConfirmDialog] = useState({ open: false, action: null, title: "", message: "" });
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef(null);
   const { t } = useLanguage();
+
+  const handleFileImport = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    setImporting(true);
+    try {
+      const res = await api.post("/menu/import", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      toast.success(res.data.message || "Menu imported successfully!");
+      refresh();
+    } catch (err) {
+      console.error("Excel import failed:", err);
+      toast.error(err?.response?.data?.detail || "Failed to import Excel file");
+    } finally {
+      setImporting(false);
+      if (e.target) e.target.value = "";
+    }
+  };
+
 
   const refresh = async () => {
     try {
@@ -170,10 +196,30 @@ export default function MenuPage() {
           <div className="text-[15px] uppercase tracking-[0.1em] font-bold bg-gradient-to-r from-[#FF8A3D] to-[#FF6B00] bg-clip-text text-transparent">{t("menu_database")}</div>
           <h1 className="font-display text-3xl font-extrabold tracking-tight text-slate-900">{t("nav_menu")}</h1>
         </div>
-        <Button onClick={startNew} className="bg-gradient-to-r from-[#FF8A3D] to-[#FF6B00] hover:brightness-105 text-white" data-testid="add-item-btn">
-          <Plus className="w-3 h-4 mr-2" /> {t("add_item")}
-        </Button>
+        <div className="flex items-center gap-3">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileImport}
+            accept=".xlsx, .xls, .csv"
+            className="hidden"
+            data-testid="excel-file-input"
+          />
+          <Button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importing}
+            className="bg-[#62A416] hover:bg-[#528A12] text-white font-bold rounded-full px-5 py-2 shadow-sm transition-all flex items-center"
+            data-testid="import-excel-btn"
+          >
+            <FileSpreadsheet className="w-4 h-4 mr-2 text-white" />
+            {importing ? "Importing..." : "Import Excel"}
+          </Button>
+          <Button onClick={startNew} className="bg-gradient-to-r from-[#FF8A3D] to-[#FF6B00] hover:brightness-105 text-white" data-testid="add-item-btn">
+            <Plus className="w-3 h-4 mr-2" /> {t("add_item")}
+          </Button>
+        </div>
       </div>
+
 
       <div className="overflow-y-auto flex-1 min-h-0">
         {/* Professional Categories Section */}

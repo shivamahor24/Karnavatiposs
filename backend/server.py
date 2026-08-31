@@ -40,11 +40,12 @@ import aiosqlite
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Literal, Dict, Any
 
-from fastapi import FastAPI, APIRouter, Depends, HTTPException, Request, Response
+from fastapi import FastAPI, APIRouter, Depends, HTTPException, Request, Response, File, UploadFile
 from fastapi.responses import StreamingResponse
 from starlette.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, EmailStr
 from openpyxl import Workbook  # type: ignore
+import pandas as pd
 
 
 from contextvars import ContextVar
@@ -1441,6 +1442,167 @@ async def reset_menu_availability(_: dict = Depends(get_current_user)):
     return {"ok": True}
 
 
+@api.post("/menu/import")
+async def import_menu(file: UploadFile = File(...), _: dict = Depends(require_roles("admin"))):
+    db = await get_db()
+    tenant = _tenant()
+
+    filename = file.filename.lower() if file.filename else ""
+    if not (filename.endswith(".xlsx") or filename.endswith(".xls") or filename.endswith(".csv")):
+        raise HTTPException(status_code=400, detail="Unsupported file format. Please upload an Excel (.xlsx, .xls) or CSV file.")
+
+    contents = await file.read()
+
+    try:
+        if filename.endswith(".csv"):
+            df = pd.read_csv(io.BytesIO(contents))
+        else:
+            df = pd.read_excel(io.BytesIO(contents))
+    except Exception as e:
+        logger.error("Error reading excel/csv file: %s", e)
+        raise HTTPException(status_code=400, detail=f"Failed to parse Excel file: {str(e)}")
+
+    if df.empty:
+        raise HTTPException(status_code=400, detail="The uploaded Excel sheet is empty.")
+
+    # Clean column headers
+    df.columns = [str(c).strip().lower() for c in df.columns]
+
+    def get_col(aliases, default=None):
+        for col in df.columns:
+            for alias in aliases:
+                if alias == col or alias in col:
+                    return col
+        return default
+
+    col_name = get_col(["item name", "name", "item", "menu item", "title", "product name", "product"])
+    col_cat = get_col(["category name", "category", "cat", "group", "section"])
+    col_price = get_col(["price", "rate", "mrp", "amount", "cost", "unit price"])
+    col_avail = get_col(["available", "is_available", "is available", "status", "active"])
+    col_type = get_col(["menu_type", "menutype", "menu type", "type", "order type", "order_type"])
+    col_thali = get_col(["is_thali", "is thali", "thali"])
+    col_gst = get_col(["gst_enabled", "gst enabled", "gst_active", "gst active"])
+    col_gst_rate = get_col(["item_gst_rate", "item gst rate", "gst rate", "gst_rate", "gst %", "gst%", "tax rate", "tax"])
+    col_weight = get_col(["portion_weight_kg", "portion weight", "weight", "portion_weight", "portion"])
+
+    if not col_name:
+        raise HTTPException(status_code=400, detail="Excel sheet must contain an 'Item Name' or 'Name' column.")
+
+    # Fetch existing categories for tenant
+    cat_rows = await _fetchall(db, "SELECT id, name FROM categories WHERE tenant_db = ?", (tenant,))
+    categories_map = {c["name"].strip().lower(): c["id"] for c in cat_rows}
+
+    imported_count = 0
+    categories_created = 0
+
+    for _, row in df.iterrows():
+        name_val = row.get(col_name)
+        if pd.isna(name_val) or not str(name_val).strip():
+            continue
+        item_name = str(name_val).strip()
+
+        cat_name = "General"
+        if col_cat and not pd.isna(row.get(col_cat)) and str(row.get(col_cat)).strip():
+            cat_name = str(row.get(col_cat)).strip()
+
+        cat_key = cat_name.lower()
+        if cat_key in categories_map:
+            cat_id = categories_map[cat_key]
+        else:
+            cat_id = new_id()
+            max_sort = await _fetchone(db, "SELECT MAX(sort_order) as m FROM categories WHERE tenant_db = ?", (tenant,))
+            next_sort = ((max_sort.get("m") or 0) if max_sort else 0) + 1
+            await _execute(db, "INSERT INTO categories (id, tenant_db, name, sort_order) VALUES (?, ?, ?, ?)",
+                           (cat_id, tenant, cat_name, next_sort))
+            categories_map[cat_key] = cat_id
+            categories_created += 1
+
+        price_val = 0.0
+        if col_price and not pd.isna(row.get(col_price)):
+            try:
+                price_val = float(row.get(col_price))
+            except (ValueError, TypeError):
+                price_val = 0.0
+
+        available_val = True
+        if col_avail and not pd.isna(row.get(col_avail)):
+            v = str(row.get(col_avail)).strip().lower()
+            if v in ["0", "false", "no", "inactive", "off"]:
+                available_val = False
+
+        menu_type = "both"
+        if col_type and not pd.isna(row.get(col_type)):
+            v = str(row.get(col_type)).strip().lower()
+            if "dine" in v or "dining" in v:
+                menu_type = "dining"
+            elif "parcel" in v or "takeaway" in v:
+                menu_type = "parcel"
+            elif "both" in v or "all" in v:
+                menu_type = "both"
+
+        is_thali_val = False
+        if col_thali and not pd.isna(row.get(col_thali)):
+            v = str(row.get(col_thali)).strip().lower()
+            if v in ["1", "true", "yes"]:
+                is_thali_val = True
+
+        gst_enabled_val = False
+        if col_gst and not pd.isna(row.get(col_gst)):
+            v = str(row.get(col_gst)).strip().lower()
+            if v in ["1", "true", "yes"]:
+                gst_enabled_val = True
+
+        item_gst_rate_val = 0.0
+        if col_gst_rate and not pd.isna(row.get(col_gst_rate)):
+            try:
+                item_gst_rate_val = float(row.get(col_gst_rate))
+                if item_gst_rate_val > 0:
+                    gst_enabled_val = True
+            except (ValueError, TypeError):
+                item_gst_rate_val = 0.0
+
+        portion_weight_val = 0.0
+        if col_weight and not pd.isna(row.get(col_weight)):
+            try:
+                portion_weight_val = float(row.get(col_weight))
+            except (ValueError, TypeError):
+                portion_weight_val = 0.0
+
+        existing = await _fetchone(db, "SELECT id FROM menu WHERE LOWER(TRIM(name)) = LOWER(TRIM(?)) AND tenant_db = ?", (item_name, tenant))
+
+        avail_int = 1 if available_val else 0
+        thali_int = 1 if is_thali_val else 0
+        gst_int = 1 if gst_enabled_val else 0
+
+        if existing:
+            mid = existing["id"]
+            await _execute(db,
+                """UPDATE menu SET name=?, category_id=?, price=?, available=?, is_thali=?,
+                   portion_weight_kg=?, menuType=?, menu_type=?, gst_enabled=?, item_gst_rate=?
+                   WHERE id=? AND tenant_db=?""",
+                (item_name, cat_id, price_val, avail_int, thali_int,
+                 portion_weight_val, menu_type, menu_type, gst_int, item_gst_rate_val,
+                 mid, tenant))
+        else:
+            mid = new_id()
+            await _execute(db,
+                """INSERT INTO menu (id, tenant_db, name, category_id, price, available, is_thali, thali_groups, thali_extras,
+                   portion_weight_kg, menuType, menu_type, gst_enabled, item_gst_rate)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (mid, tenant, item_name, cat_id, price_val, avail_int, thali_int,
+                 "[]", "", portion_weight_val, menu_type, menu_type, gst_int, item_gst_rate_val))
+
+        imported_count += 1
+
+    return {
+        "ok": True,
+        "imported_count": imported_count,
+        "categories_created": categories_created,
+        "message": f"Successfully imported {imported_count} menu item(s)."
+    }
+
+
+
 
 # ------- Templates (Daily Menu snapshots) -------
 @api.get("/templates")
@@ -1554,36 +1716,51 @@ def _compute_totals(items: list, discount: float, default_cgst_rate: float = 2.5
 
 async def _resequence_tenant_orders(db, tenant: str) -> int:
     """
-    Ensures that all orders for a tenant are sequentially numbered #1..#N
-    in strict chronological order (created_at ASC, rowid ASC).
-    Updates any mismatched receipt numbers and synchronizes the counters table.
+    Ensures that all orders for a tenant are sequentially numbered #1..#N per calendar date
+    in strict chronological order (paid_at ASC, rowid ASC).
+    Resets receipt numbers to #1 at the start of each date and returns today's order count.
     """
     remaining_orders = await _fetchall(
         db,
-        "SELECT id, receipt_no, created_at, paid_at FROM orders WHERE tenant_db = ? ORDER BY created_at ASC, rowid ASC",
+        "SELECT id, receipt_no, created_at, paid_at FROM orders WHERE tenant_db = ? ORDER BY paid_at ASC, rowid ASC",
         (tenant,)
     )
-    for idx, r in enumerate(remaining_orders, start=1):
-        if r.get("receipt_no") != idx:
-            await _execute(db, "UPDATE orders SET receipt_no = ? WHERE id = ? AND tenant_db = ?", (idx, r["id"], tenant))
+    current_date = None
+    daily_idx = 0
+    today_str = iso(now_utc())[:10]
+    today_count = 0
 
-    count = len(remaining_orders)
-    if count == 0:
+    for r in remaining_orders:
+        raw_dt = r.get("paid_at") or r.get("created_at") or ""
+        order_date = raw_dt[:10]
+        if order_date != current_date:
+            current_date = order_date
+            daily_idx = 1
+        else:
+            daily_idx += 1
+
+        if order_date == today_str:
+            today_count = daily_idx
+
+        if r.get("receipt_no") != daily_idx:
+            await _execute(db, "UPDATE orders SET receipt_no = ? WHERE id = ? AND tenant_db = ?", (daily_idx, r["id"], tenant))
+
+    if len(remaining_orders) == 0:
         await _execute(db, "DELETE FROM counters WHERE id = 'receipt' AND tenant_db = ?", (tenant,))
     else:
         await _execute(
             db,
             "INSERT INTO counters (id, tenant_db, value) VALUES ('receipt', ?, ?) ON CONFLICT(id, tenant_db) DO UPDATE SET value = excluded.value",
-            (tenant, count)
+            (tenant, today_count)
         )
-    return count
+    return today_count
 
 
 async def _next_receipt_number() -> int:
     db = await get_db()
     tenant = _tenant()
-    current_count = await _resequence_tenant_orders(db, tenant)
-    new_val = current_count + 1
+    today_count = await _resequence_tenant_orders(db, tenant)
+    new_val = today_count + 1
     await _execute(
         db,
         "INSERT INTO counters (id, tenant_db, value) VALUES ('receipt', ?, ?) ON CONFLICT(id, tenant_db) DO UPDATE SET value = excluded.value",
