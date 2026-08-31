@@ -139,6 +139,48 @@ export default function OrderHistory() {
     });
   }, [orders, activeFilter, appliedSearchDate, from, to]);
 
+  const groupedOrders = React.useMemo(() => {
+    if (!Array.isArray(filteredOrders) || filteredOrders.length === 0) return [];
+
+    // Sort orders descending by timestamp (latest order on top)
+    const sorted = [...filteredOrders].sort((a, b) => {
+      const timeA = new Date(a.paid_at || a.created_at || 0).getTime();
+      const timeB = new Date(b.paid_at || b.created_at || 0).getTime();
+      return timeB - timeA;
+    });
+
+    const todayStr = getLocalDateString(new Date());
+    const yesterdayDate = new Date();
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterdayStr = getLocalDateString(yesterdayDate);
+
+    const groupsMap = new Map();
+
+    sorted.forEach((o) => {
+      const rawDate = o.paid_at || o.created_at || o.date;
+      const dStr = getLocalDateString(rawDate);
+
+      if (!groupsMap.has(dStr)) {
+        let label = dStr;
+        if (dStr === todayStr) {
+          label = "Today";
+        } else if (dStr === yesterdayStr) {
+          label = "Yesterday";
+        } else if (rawDate) {
+          const dObj = new Date(rawDate);
+          if (!isNaN(dObj.getTime())) {
+            label = dObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', weekday: 'short' });
+          }
+        }
+        groupsMap.set(dStr, { dateStr: dStr, label, orders: [] });
+      }
+      groupsMap.get(dStr).orders.push(o);
+    });
+
+    // Return groups sorted descending by date (Today first, Yesterday next, older dates below)
+    return Array.from(groupsMap.values()).sort((a, b) => b.dateStr.localeCompare(a.dateStr));
+  }, [filteredOrders]);
+
   const reprint = (o) => printReceipt({ order: o, settings });
 
   const handleDeleteOrder = async () => {
@@ -287,29 +329,45 @@ export default function OrderHistory() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#F4E6D7]" data-testid="orders-table">
-              {Array.isArray(filteredOrders) && filteredOrders.map(o => {
-                let pm = o.payment_mode;
-                if (o.payment_mode === "cash") pm = t("cash");
-                if (o.payment_mode === "upi") pm = t("upi");
-                if (o.payment_mode === "card") pm = t("card");
-                const orderItems = Array.isArray(o.items) ? o.items : [];
-                return (
-                  <tr key={o.id} className="hover:bg-[#FFF8F2] transition-colors" data-testid={`order-row-${o.id}`}>
-                    <td className="px-2.5 md:px-3.5 py-2 md:py-2.5 font-mono font-semibold text-xs md:text-[13px]">#{o.receipt_no}</td>
-                    <td className="px-2.5 md:px-3.5 py-2 md:py-2.5 text-muted-foreground text-[10px] md:text-xs whitespace-nowrap">{new Date(o.paid_at).toLocaleString('en-IN')}</td>
-                    <td className="px-2.5 md:px-3.5 py-2 md:py-2.5 text-[11px] md:text-xs max-w-[160px] md:max-w-[220px] truncate" title={orderItems.map(i => `${t(i.name)} ×${i.qty}`).join(", ")}>{orderItems.map(i => `${t(i.name)} ×${i.qty}`).join(", ")}</td>
-                    <td className="px-2.5 md:px-3.5 py-2 md:py-2.5 whitespace-nowrap"><span className="text-[9px] md:text-[10px] uppercase tracking-wider font-mono px-1.5 md:px-2 py-0.5 rounded-md bg-sand-subtle border border-border">{pm}</span></td>
-                    <td className="px-2.5 md:px-3.5 py-2 md:py-2.5 text-right font-mono font-bold text-xs md:text-sm whitespace-nowrap">₹{o.total}</td>
-                    <td className="px-2.5 md:px-3.5 py-2 md:py-2.5 text-right whitespace-nowrap">
-                      <div className="flex justify-end items-center gap-0.5">
-                        <button onClick={() => setView(o)} className="p-1 md:p-1.5 hover:bg-sand-subtle rounded-md text-slate-600" data-testid={`view-${o.id}`} title="View Details"><Eye className="w-3.5 h-3.5 md:w-4 md:h-4" /></button>
-                        <button onClick={() => reprint(o)} className="p-1 md:p-1.5 hover:bg-sand-subtle rounded-md text-terracota" data-testid={`reprint-${o.id}`} title="Reprint Receipt"><Printer className="w-3.5 h-3.5 md:w-4 md:h-4" /></button>
-                        <button onClick={() => setDeleteTarget(o)} className="p-1 md:p-1.5 hover:bg-red-50 rounded-md text-red-500 hover:text-red-700 transition-colors" data-testid={`delete-${o.id}`} title="Delete Order"><Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4" /></button>
+              {groupedOrders.map((group) => (
+                <React.Fragment key={group.dateStr}>
+                  <tr className="bg-[#FFF8F2] border-y border-[#F4E6D7]">
+                    <td colSpan="6" className="px-3.5 py-2 font-extrabold text-xs text-[#FF6B00] tracking-wider uppercase bg-gradient-to-r from-[#FFF3E6] to-[#FFF8F2]">
+                      <div className="flex items-center justify-between">
+                        <span className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-[#FF6B00]"></span>
+                          <span>{group.label}</span>
+                          <span className="text-[11px] font-semibold text-slate-500 font-mono">({group.dateStr})</span>
+                        </span>
+                        <span className="text-[11px] font-semibold text-slate-600 bg-white/80 border border-[#F4E6D7] px-2 py-0.5 rounded-full">{group.orders.length} {group.orders.length === 1 ? 'order' : 'orders'}</span>
                       </div>
                     </td>
                   </tr>
-                );
-              })}
+                  {group.orders.map((o) => {
+                    let pm = o.payment_mode;
+                    if (o.payment_mode === "cash") pm = t("cash");
+                    if (o.payment_mode === "upi") pm = t("upi");
+                    if (o.payment_mode === "card") pm = t("card");
+                    const orderItems = Array.isArray(o.items) ? o.items : [];
+                    return (
+                      <tr key={o.id} className="hover:bg-[#FFF8F2] transition-colors" data-testid={`order-row-${o.id}`}>
+                        <td className="px-2.5 md:px-3.5 py-2 md:py-2.5 font-mono font-semibold text-xs md:text-[13px]">#{o.receipt_no}</td>
+                        <td className="px-2.5 md:px-3.5 py-2 md:py-2.5 text-muted-foreground text-[10px] md:text-xs whitespace-nowrap">{new Date(o.paid_at || o.created_at).toLocaleString('en-IN')}</td>
+                        <td className="px-2.5 md:px-3.5 py-2 md:py-2.5 text-[11px] md:text-xs max-w-[160px] md:max-w-[220px] truncate" title={orderItems.map(i => `${t(i.name)} ×${i.qty}`).join(", ")}>{orderItems.map(i => `${t(i.name)} ×${i.qty}`).join(", ")}</td>
+                        <td className="px-2.5 md:px-3.5 py-2 md:py-2.5 whitespace-nowrap"><span className="text-[9px] md:text-[10px] uppercase tracking-wider font-mono px-1.5 md:px-2 py-0.5 rounded-md bg-sand-subtle border border-border">{pm}</span></td>
+                        <td className="px-2.5 md:px-3.5 py-2 md:py-2.5 text-right font-mono font-bold text-xs md:text-sm whitespace-nowrap">₹{o.total}</td>
+                        <td className="px-2.5 md:px-3.5 py-2 md:py-2.5 text-right whitespace-nowrap">
+                          <div className="flex justify-end items-center gap-0.5">
+                            <button onClick={() => setView(o)} className="p-1 md:p-1.5 hover:bg-sand-subtle rounded-md text-slate-600" data-testid={`view-${o.id}`} title="View Details"><Eye className="w-3.5 h-3.5 md:w-4 md:h-4" /></button>
+                            <button onClick={() => reprint(o)} className="p-1 md:p-1.5 hover:bg-sand-subtle rounded-md text-terracota" data-testid={`reprint-${o.id}`} title="Reprint Receipt"><Printer className="w-3.5 h-3.5 md:w-4 md:h-4" /></button>
+                            <button onClick={() => setDeleteTarget(o)} className="p-1 md:p-1.5 hover:bg-red-50 rounded-md text-red-500 hover:text-red-700 transition-colors" data-testid={`delete-${o.id}`} title="Delete Order"><Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4" /></button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </React.Fragment>
+              ))}
               {filteredOrders.length === 0 && <tr><td colSpan="6" className="text-center text-muted-foreground py-10 text-xs md:text-sm">{t("no_bills_yet")}</td></tr>}
             </tbody>
           </table>
